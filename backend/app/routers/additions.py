@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,7 +13,12 @@ router = APIRouter(prefix="/additions", tags=["Addition Playlist"])
 
 @router.post("", response_model=AdditionRead, status_code=status.HTTP_201_CREATED)
 def create_addition(payload: AdditionCreate, db: Session = Depends(get_db)):
-    addition = PlaylistAddition(**payload.model_dump())
+    try:
+        metadata = spotify.get_track(payload.track_uri.rsplit(":", 1)[-1])
+    except spotify.SpotifyError as e:
+        raise to_http(e)
+
+    addition = PlaylistAddition(**payload.model_dump(), **metadata)
     db.add(addition)
     try:
         db.flush()
@@ -45,6 +50,11 @@ def list_additions(
     )
     return db.scalars(stmt).all()
 
+@router.get("/stats")
+def addition_stats(db: Session = Depends(get_db)):
+    count = db.scalar(select(func.count()).select_from(PlaylistAddition))
+    return {"count": count or 0}
+
 @router.get("/{addition_id}", response_model=AdditionRead)
 def get_addition(
     addition_id: int,
@@ -52,7 +62,7 @@ def get_addition(
 ):
     addition = db.get(PlaylistAddition, addition_id)
     if addition is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Track gak ketemu")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Track not found")
     return addition
 
 @router.patch("/{addition_id}", response_model=AdditionRead)
@@ -63,7 +73,7 @@ def update_addition(
 ):
     addition = db.get(PlaylistAddition, addition_id)
     if addition is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Track gak ketemu")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Track not found")
     addition.username = payload.username
     db.commit()
     db.refresh(addition)
@@ -76,6 +86,6 @@ def delete_addition(
 ):
     addition = db.get(PlaylistAddition, addition_id)
     if addition is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Track gak ketemu")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Track not found")
     db.delete(addition)
     db.commit()

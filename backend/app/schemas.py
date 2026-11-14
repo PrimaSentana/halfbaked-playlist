@@ -17,6 +17,10 @@ class AdditionRead(BaseModel):
 
     id: int
     track_uri: str
+    track_name: str | None
+    artists: list[str] | None
+    image_url: str | None
+    spotify_url: str | None
     username: str
     added_at: datetime
 

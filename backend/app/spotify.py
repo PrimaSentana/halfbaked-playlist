@@ -222,6 +222,17 @@ def _playlist_id() -> str:
     return raw.split("?", 1)[0].strip("/")
 
 
+def get_track(track_id: str) -> dict:
+    t = _request("GET", f"/tracks/{track_id}")
+    images = t["album"]["images"]
+    return {
+        "track_name": t["name"],
+        "artists": [a["name"] for a in t["artists"]],
+        "image_url": images[0]["url"] if images else None,
+        "spotify_url": t.get("external_urls", {}).get("spotify"),
+    }
+
+
 def add_track_to_playlist(track_uri: str) -> None:
     _request(
         "POST", f"/playlists/{_playlist_id()}/items",

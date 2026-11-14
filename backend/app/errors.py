@@ -10,6 +10,8 @@ def to_http(e: SpotifyError) -> HTTPException:
         return HTTPException(503, e.message)
     if e.status == 400:
         return HTTPException(400, e.message)
+    if e.status == 404:
+        return HTTPException(404, "Spotify could not find that track or playlist")
     if e.status == 403:
         return HTTPException(
             403,
