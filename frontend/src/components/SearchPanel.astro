@@ -1,0 +1,65 @@
+<section class="col-search" aria-labelledby="search-title">
+  <div class="section-head">
+    <span class="label" id="search-title">02 — Search</span>
+    <span class="label label--muted">Spotify Web API</span>
+  </div>
+
+  <form class="search" id="search-form" role="search">
+    <div class="search__field">
+      <label class="sr-only" for="search-input">Search Spotify tracks</label>
+      <input
+        class="search__input"
+        id="search-input"
+        name="q"
+        type="search"
+        placeholder="Track, artist, album…"
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="100"
+        enterkeyhint="search"
+      />
+    </div>
+    <button class="search__submit" type="submit">Search ↗</button>
+  </form>
+
+  <p class="micro">Press / to focus · Esc to clear</p>
+
+  <ul class="results" id="results" aria-live="polite"></ul>
+
+  <div class="composer" id="composer" hidden>
+    <div class="composer__head label">
+      <span>Selected track</span>
+      <span>01 / 01</span>
+    </div>
+
+    <div class="composer__track">
+      <div class="composer__art-wrap" id="composer-art"></div>
+      <div>
+        <p class="composer__name" id="composer-name"></p>
+        <p class="composer__artist" id="composer-artist"></p>
+      </div>
+    </div>
+
+    <form class="composer__form" id="add-form">
+      <label class="label" for="username">Your name</label>
+      <input
+        class="composer__input"
+        id="username"
+        name="username"
+        maxlength="30"
+        required
+        placeholder="e.g. Budi"
+        autocomplete="nickname"
+        spellcheck="false"
+      />
+      <div class="composer__actions">
+        <button class="btn btn--solid" id="add-button" type="submit">
+          Add to playlist ↗
+        </button>
+        <button class="btn btn--ghost" id="cancel-button" type="button">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</section>

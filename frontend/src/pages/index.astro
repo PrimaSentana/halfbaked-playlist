@@ -1,0 +1,53 @@
+---
+import Base from "../layouts/Base.astro";
+import Header from "../components/Header.astro";
+import SearchPanel from "../components/SearchPanel.astro";
+import FeedPanel from "../components/FeedPanel.astro";
+---
+
+<Base>
+  <div class="page">
+    <Header />
+
+    <main>
+      <section class="hero">
+        <div class="hero__meta label">
+          <span>01 — A Collaborative Listening Log</span>
+          <span>Est. 2026 / Jakarta</span>
+        </div>
+
+        <h1 class="hero__title">
+          <span class="line">Add a track.</span>
+          <span class="line">Leave a mark.</span>
+        </h1>
+
+        <div class="hero__bottom">
+          <p class="hero__intro">
+            Search Spotify, sign your name, and the song lands in the shared
+            playlist — instantly.
+          </p>
+          <span class="label hero__index">02 — Search / 03 — Feed</span>
+          <span class="label label--muted hero__note">Open to everyone</span>
+        </div>
+      </section>
+
+      <hr class="rule" />
+
+      <section class="workspace" aria-label="Playlist workspace">
+        <SearchPanel />
+        <FeedPanel />
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span class="label">Halfbaked Playlist — 2026</span>
+      <span class="label label--muted">Astro / GSAP / Spotify</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script>
+    import "../scripts/app";
+  </script>
+</Base>
