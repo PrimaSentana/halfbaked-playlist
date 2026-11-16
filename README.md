@@ -1,6 +1,6 @@
 # Halfbaked Playlist
 
-A shared Spotify playlist for **Politeknik Negeri Bali (PNB)**.
+A shared Spotify playlist just for fun.
 
 Search a song, sign your name, and it lands in one playlist everyone can listen to.
 
@@ -11,8 +11,8 @@ Live site: **https://www.halfbaked.web.id**
 ## Why I built this
 
 I built Halfbaked Playlist as a small side project for my campus. I wanted a
-place where PNB people could drop their favourite tracks and show what they
-actually listen to — not just the songs everyone already knows, but the weird
+place where people could drop their favourite tracks and show what they
+actually listen to. Not just the songs everyone already knows, but the weird
 stuff, the guilty pleasures, the local bands, the 3 a.m. discoveries.
 
 The idea is simple: share your music taste, find something new from someone
