@@ -14,10 +14,6 @@ import {
   type Track,
 } from "../lib/api";
 
-/* ------------------------------------------------------------------
-   DOM
-   ------------------------------------------------------------------ */
-
 function el<T extends HTMLElement>(selector: string): T {
   const node = document.querySelector<T>(selector);
   if (!node) throw new Error(`Missing element: ${selector}`);
@@ -56,10 +52,6 @@ const engineStatus = el<HTMLSpanElement>("#engine-status");
 const engineStatusText = optionalEl<HTMLSpanElement>("#engine-status-text");
 const toast = el<HTMLDivElement>("#toast");
 
-/* ------------------------------------------------------------------
-   State
-   ------------------------------------------------------------------ */
-
 type State = {
   additions: Map<number, Addition>;
   selected: Track | null;
@@ -90,9 +82,7 @@ const PLAYLIST_POLL_MS = 60_000;
 const USERNAME_KEY = "halfbaked.username";
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-/* ------------------------------------------------------------------
-   Helpers
-   ------------------------------------------------------------------ */
+
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
@@ -193,9 +183,7 @@ function updateCount(count: number): void {
   if (statCount) statCount.textContent = `${count} TRACK${count === 1 ? "" : "S"}`;
 }
 
-/* ------------------------------------------------------------------
-   Feed
-   ------------------------------------------------------------------ */
+
 
 type TrackRowInput = {
   index: string;
@@ -377,9 +365,7 @@ async function refreshLatest(): Promise<void> {
   }
 }
 
-/* ------------------------------------------------------------------
-   Playlist
-   ------------------------------------------------------------------ */
+
 
 function createPlaylistItem(item: PlaylistItem): HTMLLIElement {
   return createTrackRow({
@@ -433,9 +419,7 @@ async function loadPlaylist(): Promise<void> {
   }
 }
 
-/* ------------------------------------------------------------------
-   Search
-   ------------------------------------------------------------------ */
+
 
 function setResultsStatus(text: string, isError = false): void {
   resultsList.replaceChildren();
@@ -539,9 +523,7 @@ function queueSearch(): void {
   }, 350);
 }
 
-/* ------------------------------------------------------------------
-   Composer
-   ------------------------------------------------------------------ */
+
 
 function selectTrack(track: Track, item: HTMLElement): void {
   state.selected = track;
@@ -642,9 +624,7 @@ cancelButton.addEventListener("click", () => {
   searchInput.focus();
 });
 
-/* ------------------------------------------------------------------
-   Events
-   ------------------------------------------------------------------ */
+
 
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -706,9 +686,6 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-/* ------------------------------------------------------------------
-   Motion
-   ------------------------------------------------------------------ */
 
 function setupMotion(): void {
   if (!canAnimate()) return;
@@ -759,9 +736,6 @@ function setupMotion(): void {
   });
 }
 
-/* ------------------------------------------------------------------
-   Boot
-   ------------------------------------------------------------------ */
 
 setupMotion();
 void loadInitial();
