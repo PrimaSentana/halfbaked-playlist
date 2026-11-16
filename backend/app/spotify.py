@@ -16,6 +16,7 @@ API_BASE = "https://api.spotify.com/v1"
 
 MAX_RETRIES = 3
 MAX_INLINE_WAIT = 5
+PLAYLIST_CACHE_TTL = 60
 
 
 class SpotifyError(Exception):
@@ -35,6 +36,9 @@ _access_token: str | None = None
 _expires_at = 0.0
 _cooldown_until = 0.0
 _pending_states: dict[str, float] = {}
+
+_playlist_lock = threading.Lock()
+_playlist_cache: dict = {"fetched_at": 0.0, "data": None}
 
 
 def _basic_auth() -> str:
@@ -222,6 +226,10 @@ def _playlist_id() -> str:
     return raw.split("?", 1)[0].strip("/")
 
 
+def playlist_url() -> str:
+    return f"https://open.spotify.com/playlist/{_playlist_id()}"
+
+
 def get_track(track_id: str) -> dict:
     t = _request("GET", f"/tracks/{track_id}")
     images = t["album"]["images"]
@@ -233,8 +241,84 @@ def get_track(track_id: str) -> dict:
     }
 
 
+def _fetch_playlist_items(limit: int) -> dict:
+    fields = (
+        "total,items(added_at,item(uri,name,type,is_local,artists(name),"
+        "album(images(url)),external_urls(spotify)))"
+    )
+    page = _request(
+        "GET", f"/playlists/{_playlist_id()}/items",
+        params={"limit": limit, "offset": 0, "fields": fields},
+    )
+    total = int(page.get("total") or 0)
+    offset = 0
+    entries = page.get("items") or []
+
+    if total > limit:  # the newest tracks live at the end of the playlist
+        offset = total - limit
+        page = _request(
+            "GET", f"/playlists/{_playlist_id()}/items",
+            params={"limit": limit, "offset": offset, "fields": fields},
+        )
+        entries = page.get("items") or []
+
+    items = []
+    for index, entry in enumerate(entries):
+        if not entry:
+            continue
+        track = entry.get("item") or entry.get("track")
+        if not track or track.get("is_local") or track.get("type") != "track":
+            continue
+        images = (track.get("album") or {}).get("images") or []
+        items.append({
+            "position": offset + index + 1,
+            "track_uri": track.get("uri") or "",
+            "track_name": track.get("name"),
+            "artists": [
+                artist["name"] for artist in track.get("artists") or []
+                if artist.get("name")
+            ],
+            "image_url": images[0].get("url") if images else None,
+            "spotify_url": (track.get("external_urls") or {}).get("spotify"),
+            "added_at": entry.get("added_at"),
+        })
+    return {"total": total, "items": items}
+
+
+def _invalidate_playlist_cache() -> None:
+    with _playlist_lock:
+        _playlist_cache["fetched_at"] = 0.0
+        _playlist_cache["data"] = None
+
+
+def get_playlist_items(limit: int = 50) -> dict:
+    """Newest `limit` tracks of the playlist, in playlist order."""
+    with _playlist_lock:
+        cached = _playlist_cache["data"]
+        fresh = (
+            cached is not None
+            and time.time() - _playlist_cache["fetched_at"] < PLAYLIST_CACHE_TTL
+        )
+
+    if fresh:
+        return {"total": cached["total"], "items": cached["items"][-limit:]}
+
+    try:
+        data = _fetch_playlist_items(50)
+    except SpotifyError:
+        if cached is not None:  # keep the page working on a transient failure
+            return {"total": cached["total"], "items": cached["items"][-limit:]}
+        raise
+
+    with _playlist_lock:
+        _playlist_cache["data"] = data
+        _playlist_cache["fetched_at"] = time.time()
+    return {"total": data["total"], "items": data["items"][-limit:]}
+
+
 def add_track_to_playlist(track_uri: str) -> None:
     _request(
         "POST", f"/playlists/{_playlist_id()}/items",
         json={"uris": [track_uri]}, retry_5xx=False,
     )
+    _invalidate_playlist_cache()

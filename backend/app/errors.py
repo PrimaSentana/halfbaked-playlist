@@ -17,6 +17,6 @@ def to_http(e: SpotifyError) -> HTTPException:
             403,
             "Spotify refused the request. The authorized account must own the "
             "playlist, and a collaborative/private playlist requires the "
-            "playlist-modify-private scope.",
+            "playlist-modify-private and playlist-read-private scopes.",
         )
     return HTTPException(502, f"Spotify error: {e.message}")

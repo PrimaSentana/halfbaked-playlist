@@ -4,10 +4,13 @@ import Lenis from "lenis";
 import {
   createAddition,
   errorMessage,
+  getPlaylist,
   getStats,
   listAdditions,
   searchTracks,
   type Addition,
+  type PlaylistItem,
+  type PlaylistResponse,
   type Track,
 } from "../lib/api";
 
@@ -19,6 +22,10 @@ function el<T extends HTMLElement>(selector: string): T {
   const node = document.querySelector<T>(selector);
   if (!node) throw new Error(`Missing element: ${selector}`);
   return node;
+}
+
+function optionalEl<T extends HTMLElement>(selector: string): T | null {
+  return document.querySelector<T>(selector);
 }
 
 const searchForm = el<HTMLFormElement>("#search-form");
@@ -39,9 +46,14 @@ const feedEmpty = el<HTMLParagraphElement>("#feed-empty");
 const feedCount = el<HTMLSpanElement>("#feed-count");
 const loadMoreButton = el<HTMLButtonElement>("#load-more");
 
-const statCount = el<HTMLSpanElement>("#stat-count");
+const playlistList = el<HTMLOListElement>("#playlist");
+const playlistEmpty = el<HTMLParagraphElement>("#playlist-empty");
+const playlistCount = el<HTMLSpanElement>("#playlist-count");
+const playlistLink = el<HTMLAnchorElement>("#playlist-link");
+
+const statCount = optionalEl<HTMLSpanElement>("#stat-count");
 const engineStatus = el<HTMLSpanElement>("#engine-status");
-const engineStatusText = el<HTMLSpanElement>("#engine-status-text");
+const engineStatusText = optionalEl<HTMLSpanElement>("#engine-status-text");
 const toast = el<HTMLDivElement>("#toast");
 
 /* ------------------------------------------------------------------
@@ -56,6 +68,8 @@ type State = {
   hasRendered: boolean;
   searchAbort: AbortController | null;
   pollBusy: boolean;
+  playlistRendered: boolean;
+  playlistSignature: string;
 };
 
 const state: State = {
@@ -66,10 +80,13 @@ const state: State = {
   hasRendered: false,
   searchAbort: null,
   pollBusy: false,
+  playlistRendered: false,
+  playlistSignature: "",
 };
 
 const PAGE_SIZE = 50;
 const POLL_MS = 12_000;
+const PLAYLIST_POLL_MS = 60_000;
 const USERNAME_KEY = "halfbaked.username";
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -169,43 +186,55 @@ function showToast(message: string, isError = false): void {
 
 function setStatus(text: string, isError = false): void {
   engineStatus.classList.toggle("is-error", isError);
-  engineStatusText.textContent = text;
+  if (engineStatusText) engineStatusText.textContent = text;
 }
 
 function updateCount(count: number): void {
-  statCount.textContent = `${count} TRACK${count === 1 ? "" : "S"}`;
+  if (statCount) statCount.textContent = `${count} TRACK${count === 1 ? "" : "S"}`;
 }
 
 /* ------------------------------------------------------------------
    Feed
    ------------------------------------------------------------------ */
 
-function createFeedItem(addition: Addition, index: number): HTMLLIElement {
+type TrackRowInput = {
+  index: string;
+  track_name: string | null;
+  artists: string[] | null;
+  image_url: string | null;
+  spotify_url: string | null;
+  track_uri: string;
+  username: string | null;
+  added_at: string | null;
+  dataId?: number;
+};
+
+function createTrackRow(input: TrackRowInput): HTMLLIElement {
   const item = document.createElement("li");
   item.className = "feed__item";
-  item.dataset.id = String(addition.id);
+  if (input.dataId !== undefined) item.dataset.id = String(input.dataId);
 
   const number = document.createElement("span");
   number.className = "feed__index";
-  number.textContent = String(index + 1).padStart(2, "0");
+  number.textContent = input.index;
 
-  const url = spotifyUrl(addition);
+  const url = spotifyUrl(input);
   const artLink: HTMLElement = document.createElement(url ? "a" : "span");
   artLink.className = "feed__art-link";
   if (url && artLink instanceof HTMLAnchorElement) {
     artLink.href = url;
     artLink.target = "_blank";
     artLink.rel = "noopener noreferrer";
-    artLink.setAttribute("aria-label", `Open ${addition.track_name ?? "track"} on Spotify`);
+    artLink.setAttribute("aria-label", `Open ${input.track_name ?? "track"} on Spotify`);
   }
-  artLink.append(makeTrackArt(addition.image_url, addition.track_name ?? "Track artwork", "feed", 56));
+  artLink.append(makeTrackArt(input.image_url, input.track_name ?? "Track artwork", "feed", 56));
 
   const body = document.createElement("div");
   body.className = "feed__body";
 
   const name: HTMLElement = document.createElement(url ? "a" : "span");
   name.className = "feed__name";
-  name.textContent = addition.track_name ?? "Unknown track";
+  name.textContent = input.track_name ?? "Unknown track";
   if (url && name instanceof HTMLAnchorElement) {
     name.href = url;
     name.target = "_blank";
@@ -214,25 +243,44 @@ function createFeedItem(addition: Addition, index: number): HTMLLIElement {
 
   const artist = document.createElement("span");
   artist.className = "feed__artist";
-  artist.textContent = addition.artists?.length
-    ? addition.artists.join(", ")
-    : addition.track_uri;
+  artist.textContent = input.artists?.length
+    ? input.artists.join(", ")
+    : input.track_uri;
 
   const meta = document.createElement("span");
   meta.className = "feed__meta";
 
-  const user = document.createElement("span");
-  user.className = "feed__user";
-  user.textContent = `+ ${addition.username}`;
+  if (input.username) {
+    const user = document.createElement("span");
+    user.className = "feed__user";
+    user.textContent = `+ ${input.username}`;
+    meta.append(user);
+  }
 
-  const time = document.createElement("time");
-  time.dateTime = addition.added_at;
-  time.textContent = formatDate(addition.added_at);
+  if (input.added_at) {
+    const time = document.createElement("time");
+    time.dateTime = input.added_at;
+    time.textContent = formatDate(input.added_at);
+    meta.append(time);
+  }
 
-  meta.append(user, time);
   body.append(name, artist, meta);
   item.append(number, artLink, body);
   return item;
+}
+
+function createFeedItem(addition: Addition, index: number): HTMLLIElement {
+  return createTrackRow({
+    index: String(index + 1).padStart(2, "0"),
+    track_name: addition.track_name,
+    artists: addition.artists,
+    image_url: addition.image_url,
+    spotify_url: addition.spotify_url,
+    track_uri: addition.track_uri,
+    username: addition.username,
+    added_at: addition.added_at,
+    dataId: addition.id,
+  });
 }
 
 function renderFeed(newIds = new Set<number>()): void {
@@ -326,6 +374,62 @@ async function refreshLatest(): Promise<void> {
     setStatus("OFFLINE", true);
   } finally {
     state.pollBusy = false;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Playlist
+   ------------------------------------------------------------------ */
+
+function createPlaylistItem(item: PlaylistItem): HTMLLIElement {
+  return createTrackRow({
+    index: String(item.position).padStart(2, "0"),
+    track_name: item.track_name,
+    artists: item.artists,
+    image_url: item.image_url,
+    spotify_url: item.spotify_url,
+    track_uri: item.track_uri,
+    username: item.username,
+    added_at: item.added_at,
+  });
+}
+
+function renderPlaylist(data: PlaylistResponse): void {
+  const items = [...data.items].reverse(); // newest first
+  const signature =
+    `${data.total}|` +
+    items
+      .map((item) => `${item.position}:${item.track_uri}:${item.username ?? ""}`)
+      .join("|");
+
+  playlistEmpty.hidden = items.length > 0;
+  if (items.length === 0) playlistEmpty.textContent = "NOTHING IN THE PLAYLIST YET.";
+  playlistCount.textContent = items.length
+    ? `${items.length} OF ${data.total}`
+    : "NO ENTRIES";
+
+  playlistLink.href = data.playlist_url;
+  playlistLink.hidden = false;
+
+  if (signature === state.playlistSignature) return;
+  state.playlistSignature = signature;
+
+  playlistList.replaceChildren(...items.map(createPlaylistItem));
+
+  if (!state.playlistRendered) {
+    animateIn(Array.from(playlistList.children), 0.02, 8);
+    state.playlistRendered = true;
+  }
+}
+
+async function loadPlaylist(): Promise<void> {
+  try {
+    renderPlaylist(await getPlaylist());
+  } catch (error) {
+    if (state.playlistSignature) return; // keep the last good render
+    playlistEmpty.hidden = false;
+    playlistEmpty.textContent = errorMessage(error).toUpperCase();
+    playlistCount.textContent = "UNAVAILABLE";
   }
 }
 
@@ -513,6 +617,7 @@ addForm.addEventListener("submit", async (event) => {
 
     const stats = await getStats();
     updateCount(stats.count);
+    void loadPlaylist();
 
     showToast(
       `ADDED — ${(addition.track_name ?? "TRACK").toUpperCase()} / ${username.toUpperCase()}`,
@@ -595,7 +700,10 @@ loadMoreButton.addEventListener("click", () => {
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) void refreshLatest();
+  if (!document.hidden) {
+    void refreshLatest();
+    void loadPlaylist();
+  }
 });
 
 /* ------------------------------------------------------------------
@@ -657,7 +765,12 @@ function setupMotion(): void {
 
 setupMotion();
 void loadInitial();
+void loadPlaylist();
 
 window.setInterval(() => {
   void refreshLatest();
 }, POLL_MS);
+
+window.setInterval(() => {
+  if (!document.hidden) void loadPlaylist();
+}, PLAYLIST_POLL_MS);
