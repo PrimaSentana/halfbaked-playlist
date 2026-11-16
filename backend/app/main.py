@@ -11,6 +11,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:4321",
         "http://127.0.0.1:4321",
+        "https://halfbaked.web.id/",
+        "https://halfbaked.web.id/api/"
     ],
     allow_methods=["*"],
     allow_headers=["*"],
