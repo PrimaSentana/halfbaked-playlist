@@ -6,7 +6,9 @@ class Settings(BaseSettings):
     spotify_client_secret: str
     spotify_redirect_uri: str
     spotify_playlist_id: str
-    spotify_scope: str = "playlist-modify-public playlist-modify-private"
+    spotify_scope: str = (
+        "playlist-modify-public playlist-modify-private playlist-read-private"
+    )
     admin_key: str
 
     model_config = SettingsConfigDict(env_file=".env")

@@ -19,6 +19,23 @@ export type Addition = {
   added_at: string;
 };
 
+export type PlaylistItem = {
+  position: number;
+  track_uri: string;
+  track_name: string | null;
+  artists: string[] | null;
+  image_url: string | null;
+  spotify_url: string | null;
+  added_at: string | null;
+  username: string | null;
+};
+
+export type PlaylistResponse = {
+  total: number;
+  playlist_url: string;
+  items: PlaylistItem[];
+};
+
 export class ApiError extends Error {
   status: number;
   retryAfter?: number;
@@ -79,6 +96,10 @@ export function getStats(): Promise<{ count: number }> {
   return request<{ count: number }>("/additions/stats");
 }
 
+export function getPlaylist(limit = 50): Promise<PlaylistResponse> {
+  return request<PlaylistResponse>(`/playlist?limit=${limit}`);
+}
+
 export function createAddition(trackUri: string, username: string): Promise<Addition> {
   return request<Addition>("/additions", {
     method: "POST",
@@ -92,7 +113,7 @@ export function errorMessage(error: unknown): string {
       case 0:
         return "Could not reach the API. Is the backend running?";
       case 403:
-        return "Spotify refused the write. The app must be authorized by the playlist owner.";
+        return "Spotify refused the request. The app must be re-authorized by the playlist owner.";
       case 404:
         return "Spotify could not find that track.";
       case 409:

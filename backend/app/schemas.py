@@ -25,6 +25,23 @@ class AdditionRead(BaseModel):
     added_at: datetime
 
 
+class PlaylistItemRead(BaseModel):
+    position: int
+    track_uri: str
+    track_name: str | None
+    artists: list[str] | None
+    image_url: str | None
+    spotify_url: str | None
+    added_at: datetime | None
+    username: str | None
+
+
+class PlaylistRead(BaseModel):
+    total: int
+    playlist_url: str
+    items: list[PlaylistItemRead]
+
+
 class TrackResult(BaseModel):
     uri: str
     name: str
