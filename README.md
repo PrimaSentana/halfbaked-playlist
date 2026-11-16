@@ -16,7 +16,7 @@ actually listen to. Not just the songs everyone already knows, but the weird
 stuff, the guilty pleasures, the local bands, the 3 a.m. discoveries.
 
 The idea is simple: share your music taste, find something new from someone
-else, and get a rough picture of what PNB sounds like. Any genre is welcome.
+else, and get a rough picture of what "orang poltek" sounds like. Any genre is welcome.
 There is no gatekeeping, no follower count, and no algorithm deciding what
 matters. Just one playlist built by the people on campus, for fun.
 
